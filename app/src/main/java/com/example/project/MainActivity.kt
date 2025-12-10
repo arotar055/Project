@@ -136,7 +136,7 @@ fun TodoListScreen(
                 contentPadding = padding,
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(items) { item ->
+                items(items, key = { it.id }) { item ->
                     TodoRow(
                         item = item,
                         onCheckedChange = { checked ->
@@ -228,12 +228,20 @@ fun TodoEditScreen(
 ) {
     val context = LocalContext.current
 
-    var title by remember { mutableStateOf(initialItem?.title ?: "") }
-    var description by remember { mutableStateOf(initialItem?.description ?: "") }
-    var imageUri by remember {
+    // ИСПРАВЛЕНИЕ: состояние теперь зависит от initialItem?.id,
+    // чтобы при открытии другой задачи поля корректно обновлялись
+    var title by remember(initialItem?.id) {
+        mutableStateOf(initialItem?.title ?: "")
+    }
+    var description by remember(initialItem?.id) {
+        mutableStateOf(initialItem?.description ?: "")
+    }
+    var imageUri by remember(initialItem?.id) {
         mutableStateOf<Uri?>(initialItem?.imageUri?.let { Uri.parse(it) })
     }
-    var remindAt by remember { mutableStateOf<Long?>(initialItem?.remindAt) }
+    var remindAt by remember(initialItem?.id) {
+        mutableStateOf<Long?>(initialItem?.remindAt)
+    }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -292,7 +300,12 @@ fun TodoEditScreen(
 
         // Кнопка выбора даты и времени напоминания
         Button(onClick = {
-            val calendar = Calendar.getInstance()
+            // ИСПРАВЛЕНИЕ: если напоминание уже есть, открываем диалог с этой датой
+            val calendar = Calendar.getInstance().apply {
+                if (remindAt != null) {
+                    timeInMillis = remindAt!!
+                }
+            }
 
             // выбор даты
             DatePickerDialog(
@@ -347,6 +360,9 @@ fun TodoEditScreen(
                 TodoRepository.addOrUpdate(item)
                 if (item.remindAt != null) {
                     ReminderScheduler.scheduleReminder(context, item)
+                } else {
+                    // если напоминание убрали, имеет смысл отменить старое
+                    ReminderScheduler.cancelReminder(context, item.id)
                 }
                 onDone()
             },

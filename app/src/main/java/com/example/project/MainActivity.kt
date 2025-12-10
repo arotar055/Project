@@ -1,8 +1,9 @@
 package com.example.project
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,6 +36,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.example.project.ui.theme.ProjectTheme
 import java.text.SimpleDateFormat
@@ -67,6 +69,29 @@ sealed class Screen {
 
 @Composable
 fun ToDoApp() {
+    val context = LocalContext.current
+
+    // Запрос разрешения на уведомления (Android 13+)
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { /* granted / denied – игнорируем */ }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!granted) {
+                notificationPermissionLauncher.launch(
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            }
+        }
+    }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
     var editingItem by remember { mutableStateOf<TodoItem?>(null) }
     var reloadKey by remember { mutableStateOf(0) }
@@ -228,8 +253,7 @@ fun TodoEditScreen(
 ) {
     val context = LocalContext.current
 
-    // ИСПРАВЛЕНИЕ: состояние теперь зависит от initialItem?.id,
-    // чтобы при открытии другой задачи поля корректно обновлялись
+    // Состояние привязано к id, чтобы при открытии другой задачи данные обновлялись
     var title by remember(initialItem?.id) {
         mutableStateOf(initialItem?.title ?: "")
     }
@@ -298,9 +322,7 @@ fun TodoEditScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Кнопка выбора даты и времени напоминания
         Button(onClick = {
-            // ИСПРАВЛЕНИЕ: если напоминание уже есть, открываем диалог с этой датой
             val calendar = Calendar.getInstance().apply {
                 if (remindAt != null) {
                     timeInMillis = remindAt!!
@@ -308,7 +330,7 @@ fun TodoEditScreen(
             }
 
             // выбор даты
-            DatePickerDialog(
+            android.app.DatePickerDialog(
                 context,
                 { _, year, month, dayOfMonth ->
                     calendar.set(Calendar.YEAR, year)
@@ -316,7 +338,7 @@ fun TodoEditScreen(
                     calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
 
                     // затем выбор времени
-                    TimePickerDialog(
+                    android.app.TimePickerDialog(
                         context,
                         { _, hourOfDay, minute ->
                             calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
@@ -358,12 +380,13 @@ fun TodoEditScreen(
                 )
 
                 TodoRepository.addOrUpdate(item)
+
                 if (item.remindAt != null) {
                     ReminderScheduler.scheduleReminder(context, item)
                 } else {
-                    // если напоминание убрали, имеет смысл отменить старое
                     ReminderScheduler.cancelReminder(context, item.id)
                 }
+
                 onDone()
             },
             modifier = Modifier.fillMaxWidth()

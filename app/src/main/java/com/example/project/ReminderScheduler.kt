@@ -26,14 +26,14 @@ object ReminderScheduler {
         )
 
         try {
-            // Пытаемся поставить ТОЧНЫЙ будильник
+            // Пытаемся поставить точный будильник
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 remindAt,
                 pendingIntent
             )
         } catch (e: SecurityException) {
-            // Если нет разрешения SCHEDULE_EXACT_ALARM – не падаем, ставим обычный
+            // Если нельзя — ставим обычный, без краша
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,

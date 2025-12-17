@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.project">
 
-    <!-- Разрешение на уведомления (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -13,8 +12,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Project">
 
-
-
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -24,9 +21,10 @@
             </intent-filter>
         </activity>
 
-        <!-- Ресивер для будильника -->
-        <receiver android:name=".NotificationReceiver" />
+        <!-- ✅ ПРАВИЛЬНЫЙ ресивер -->
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false" />
 
     </application>
-
 </manifest>

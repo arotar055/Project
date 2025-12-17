@@ -43,4 +43,7 @@ object TodoRepository {
         val current = getItems().filter { it.id != id }
         saveItems(current)
     }
+    fun deleteAll() {
+        saveItems(emptyList())
+    }
 }
